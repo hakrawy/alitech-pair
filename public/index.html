@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AliTech Pair</title>
+  <style>
+    body {background:#000;color:#0ff;font-family:Arial;display:flex;justify-content:center;align-items:center;height:100vh;}
+    .card {background:#111;padding:30px;border-radius:15px;text-align:center;box-shadow:0 0 20px #0ff;}
+    input {padding:10px;border:none;border-radius:8px;width:90%;margin-bottom:15px;}
+    button {background:#0ff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:bold;}
+    button:hover {background:#00cccc;}
+    .pair-code {margin-top:15px;font-size:1.2em;color:#fff;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>AliTech Pair</h2>
+    <p>Generate your WhatsApp Pair Code</p>
+    <input id="phone" type="text" placeholder="Enter phone with country code">
+    <button onclick="generateCode()">🔑 Generate Pair Code</button>
+    <div class="pair-code" id="result"></div>
+  </div>
+
+  <script>
+    async function generateCode() {
+      const phone = document.getElementById("phone").value
+      if (!phone) return alert("Enter phone number")
+
+      const res = await fetch("/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone })
+      })
+      const data = await res.json()
+      document.getElementById("result").innerText =
+        data.pairingCode ? `✅ Your Pair Code: ${data.pairingCode}` : "❌ Failed to generate"
+    }
+  </script>
+</body>
+</html>
