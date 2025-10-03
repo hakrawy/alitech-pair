@@ -1,49 +1,33 @@
-import express from "express"
-import path from "path"
-import { fileURLToPath } from "url"
-import {
-  makeWASocket,
-  useMultiFileAuthState,
-  makeCacheableSignalKeyStore,
-  fetchLatestBaileysVersion
-} from "@whiskeysockets/baileys"
+import express from "express";
+import makeWASocket, { useMultiFileAuthState, makeCacheableSignalKeyStore } from "@whiskeysockets/baileys";
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const app = express();
+const PORT = process.env.PORT || 10000;
 
-const app = express()
-app.use(express.json())
-app.use(express.static(path.join(__dirname, "public")))
+app.get("/code", async (req, res) => {
+  const number = req.query.number;
+  if (!number) return res.json({ code: "No number provided" });
 
-app.post("/generate", async (req, res) => {
   try {
-    const { phone } = req.body
-    if (!phone) return res.status(400).json({ error: "Phone required" })
-
-    const { state, saveCreds } = await useMultiFileAuthState(`sessions/${phone}`)
-    const { version } = await fetchLatestBaileysVersion()
-    
+    const { state, saveCreds } = await useMultiFileAuthState("./session");
     const sock = makeWASocket({
-      version,
-      auth: {
-        creds: state.creds,
-        keys: makeCacheableSignalKeyStore(state.keys, console),
-      },
-      printQRInTerminal: false,
-    })
+      auth: state,
+      printQRInTerminal: true
+    });
 
-    sock.ev.on("connection.update", (update) => {
-      if (update.pairingCode) {
-        return res.json({ pairingCode: update.pairingCode })
-      }
-    })
+    // اطلب pairing code
+    const code = await sock.requestPairingCode(number);
+    
+    // هنا يرسل الكود نفسه كرسالة للواتساب
+    await sock.sendMessage(number + "@s.whatsapp.net", { text: `🔑 Your Pairing Code: ${code}` });
 
-    sock.ev.on("creds.update", saveCreds)
-  } catch (e) {
-    console.error(e)
-    res.status(500).json({ error: "Failed to generate" })
+    return res.json({ code });
+  } catch (err) {
+    console.error(err);
+    return res.json({ code: "Error generating code" });
   }
-})
+});
 
-const PORT = process.env.PORT || 3000
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`))
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+});
